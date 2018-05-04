@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>Example Application</DisplayName>
+    <Description>Fill in any information needed to describe your package here.</Description>
+    <Version>1.0</Version>
+    <ReleaseDate>2018-05-02</ReleaseDate>
+    <Licenses>
+        <License name="GNU GENERAL PUBLIC LICENSE" file="License.txt" />
+    </Licenses>
+    <ForcedInstallation>true</ForcedInstallation>
+    <Script>installscript.js</Script>
+</Package>
