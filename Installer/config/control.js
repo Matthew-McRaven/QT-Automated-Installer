@@ -1,6 +1,3 @@
-function func() {
-
-}
 function Controller() {
     var widget = gui.pageById(QInstaller.Introduction); // get the introduction wizard page
     if (widget != null){

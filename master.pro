@@ -9,3 +9,12 @@ include("ProjectDefs.pri")
 #Lastly, include and run the installer config script
 include("Installer/InstallerConfig.pri")
 
+DISTFILES += \
+    Installer/packages/Example/installscript.js \
+    Installer/packages/Example/package.xml \
+    Installer/packages/Example/License.txt \
+    Installer/config/control.js \
+    Installer/config/configlinux.xml \
+    Installer/config/configmacx.xml \
+    Installer/config/configwin32.xml
+

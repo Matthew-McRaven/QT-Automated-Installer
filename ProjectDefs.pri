@@ -1,8 +1,8 @@
 #Installer Configuration
-#Name of the installation tool
-OUTPUT_INSTALLER_NAME=$$TARGET" Installer"
-#Internal version number, unused as of 5/2/2018
-VERSION_NUMBER = "1_0"
+#Application version number - useful to put in installer name
+VERSION_NUMBER = "1.0.0"
+#Name of the generated installer
+OUTPUT_INSTALLER_NAME=$$TARGET"-v"$$VERSION_NUMBER"-Installer"
 #If you want to use a DMG based installer for Mac, put anything in this field
 #If you want to use a QT Installer Framework Base Installer, set the field to ""
 MAC_USE_DMG_INSTALLER = "true"
@@ -12,10 +12,10 @@ MAC_USE_DMG_INSTALLER = "true"
 PATH_PREFIX = $$PWD
 #Each of the following variables should be a space separated list
 UNIVERSAL_ICONS = ""
-UNIVERSAL_DATA = "LICENSE" "Resources/ZipData.zip"
+UNIVERSAL_DATA = "LICENSE"
 MAC_ICONS = "" #No special icons for Mac
 MAC_DATA = "" #No additional data for Mac
-WINDOWS_ICONS = "Resources/globegistics.ico" "Resources/Sabrix.png"
+WINDOWS_ICONS = "Resources/myicon.ico" "Resources/myicon.png"
 WINDOWS_DATA = "" #No additional data for Windows
 LINUX_ICONS = "" #No implementation for Linux
 LINUX_DATA = "" #No implementation for Linux

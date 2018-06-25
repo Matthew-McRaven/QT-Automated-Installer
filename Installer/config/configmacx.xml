@@ -2,9 +2,9 @@
 <!--Mac OS X version of the config file-->
 <Installer>
     <Name>Example</Name>
-        <!--Installer Vesrion number, not the application version number-->
+        <!--Installer version number, not the application version number-->
     <Version>1.0.0</Version>
-        <!--Window title ofr the installer-->
+        <!--Window title of the installer-->
     <Title>Example</Title>
     <Publisher>Example</Publisher>
     <ProductUrl>https://www.pepperdine.edu/</ProductUrl>
