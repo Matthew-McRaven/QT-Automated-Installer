@@ -108,15 +108,15 @@ CONFIG(program-installer){
     else:macx{
         INSTALLER_COMMANDS += "qt_ifw_installer"
 
-        PLATFORM_DATA=MAC_DATA
-        PLATFORM_ICONS=MAC_ICONS
+        PLATFORM_DATA = $$MAC_DATA
+        PLATFORM_ICONS = $$MAC_ICONS
         INSTALLER_CONFIG_FILE = $$cpq($$PWD/config/configmacx.xml)
     }
     else:win32{
         INSTALLER_COMMANDS += "qt_ifw_installer"
 
-        PLATFORM_DATA = WINDOWS_DATA
-        PLATFORM_ICONS = WINDOWS_ICONS
+        PLATFORM_DATA = $$WINDOWS_DATA
+        PLATFORM_ICONS = $$WINDOWS_ICONS
         INSTALLER_CONFIG_FILE = $$cpq($$PWD/config/configwin32.xml)
     }
     else:linux{
@@ -126,22 +126,28 @@ CONFIG(program-installer){
 
 #Copy packages over to /Installer/Packages
 contains(INSTALLER_COMMANDS, "copy_packages"){
-    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/) $$psc
+    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/) $$psc \
+        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages) $$psc
     #Copy over packages meta info
     for(PACKAGE,TARGET_PACKAGES.PACKAGES){
         #For each target package, copy it over into the installer
-        QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
+        QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
+        QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE/) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
         QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/data) $$psc
     }
 
-    #Copy over target file
-    QMAKE_POST_LINK +=  $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/) $$psc
-
+    #Copy over target file as a directory
+    contains(TARGET_EXT,".app"): {
+        QMAKE_POST_LINK +=  $${QMAKE_COPY_DIR} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/) $$psc
+    }
+    #Copy over target file as a file
+    else:{
+        QMAKE_POST_LINK +=  $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/) $$psc
+    }
     #Copy over extra packages data
     for(extraTarget,TARGET_PACKAGES.EXTRA_DATA){
         QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
         for(datItem,$$eval(extraTarget).DATA){
-            message($$datItem)
             QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$datItem) $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
         }
     }
@@ -214,5 +220,5 @@ else:contains(INSTALLER_COMMANDS,"qt_ifw_installer"){
 
     #Create installer using the qt binary creator
     QMAKE_POST_LINK += $$cpq($$QtInstallerBin/binarycreator) -c $$cpq($$OUT_PWD/Installer/config/config.xml) -p $$cpq($$OUT_PWD/Installer/packages) \
-    $$cpq($$OUT_PWD/Installer/$$OUTPUT_INSTALLER_NAME) $$psc
+        $$cpq($$OUT_PWD/Installer/$$OUTPUT_INSTALLER_NAME) $$psc
 }

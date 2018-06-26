@@ -5,7 +5,7 @@ VERSION_NUMBER = "1.0.0"
 OUTPUT_INSTALLER_NAME=$$TARGET"-v"$$VERSION_NUMBER"-Installer"
 #If you want to use a DMG based installer for Mac, put anything in this field
 #If you want to use a QT Installer Framework Base Installer, set the field to ""
-MAC_USE_DMG_INSTALLER = "true"
+MAC_USE_DMG_INSTALLER = ""#"true"
 
 #Data Configuration
 #Look for all files below starting in this directory
