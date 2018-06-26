@@ -9,21 +9,12 @@ function Component(){
 Component.prototype.createOperations = function(){
     component.createOperations();
     if(installer.value("os") == "win"){
-        component.addOperation("Execute", "@TargetDir@\\vcredist_x64.exe","/install","/passive", "/norestart");
-        component.addOperation("CreateShortcut", "@TargetDir@/Pep9CPU.exe", "@StartMenuDir@/Pep9CPU.lnk",
-                    "workingDirectory=@TargetDir@","description=Run Pep9CPU");
+        component.addOperation("Execute", "@TargetDir@\\vcredist_x64.exe","/install","/passive", "/norestart","/quiet");
+        component.addOperation("CreateShortcut", "@TargetDir@/example.exe", "@StartMenuDir@/example.lnk",
+                    "workingDirectory=@TargetDir@","description=Run Example Application");
     }
 }
 Component.prototype.installationFinishedPageIsShown = function(){
-    /*
-    Attempt at adding another checkbox to add a desktop shortcut
-    try {
-        if (installer.isInstaller() && installer.status == QInstaller.Success) {
-            installer.addWizardPageItem( component, "QCheckBox", installer.InstallationFinished );
-        }
-    } catch(e) {
-        console.log(e);
-    }*/
 }
 
 Component.prototype.installationFinished = function(){

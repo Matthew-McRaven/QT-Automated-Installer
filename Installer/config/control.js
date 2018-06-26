@@ -8,13 +8,10 @@ function Controller() {
 Controller.prototype.IntroductionPageCallback  = function(){
     var widget = gui.currentPageWidget();
     if (widget != null) {
-		//Prevent add or remove package button from showing up by setting it's text to "", disabling it, and hiding it.
         console.log(Object.getOwnPropertyNames(widget));
-        widget.findChild("PackageManagerRadioButton").visible = false;
-        widget.findChild("PackageManagerRadioButton").enabled = false;
-        widget.findChild("PackageManagerRadioButton").text = "";
-        widget.findChild("UninstallerRadioButton").text = "Uninstall XML Tester"
-        widget.findChild("UpdaterRadioButton").text = "Update XML Tester"
+        widget.findChild("PackageManagerRadioButton").text = "Add or Remove components from Example Application";
+        widget.findChild("UninstallerRadioButton").text = "Uninstall Example Application"
+        widget.findChild("UpdaterRadioButton").text = "Update Example Application"
     }
 
 }
@@ -35,13 +32,4 @@ onPackageManagerCoreTypeChanged = function(){
 
 	
     var widget = gui.pageById(QInstaller.Introduction);
-    if (widget != null) {
-		//Any time any event comes in, the PackageManagerRadioButton tries to re-enable itself.
-		//So, every time a new button is clicked, make sure that PackageManagerRadioButton wasn't re-enabled.
-        widget.findChild("PackageManagerRadioButton").visible = false;
-        if(widget.findChild("PackageManagerRadioButton").checked==true){
-			//If somehow PackageManagerRadioButton got checked, uncheck it and default to uninstall
-            widget.findChild("UninstallerRadioButton").checked = true;
-        }
-    }
 }

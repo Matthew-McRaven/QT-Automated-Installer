@@ -15,21 +15,20 @@ UNIVERSAL_ICONS = ""
 UNIVERSAL_DATA = "LICENSE"
 MAC_ICONS = "" #No special icons for Mac
 MAC_DATA = "" #No additional data for Mac
-WINDOWS_ICONS = "Resources/myicon.ico" "Resources/myicon.png"
+#WINDOWS_ICONS = "Resources/myicon.ico" "Resources/myicon.png"
 WINDOWS_DATA = "" #No additional data for Windows
 LINUX_ICONS = "" #No implementation for Linux
 LINUX_DATA = "" #No implementation for Linux
 
 #One of your target packages must always be $$TARGET
 TARGET_PACKAGES.PACKAGES = $$TARGET
-#For every extra package you would like to add
-#give it a PACKAGE_NAME
-extTarg1.PACKAGE_NAME = "Data"
-#And a space seperated list of files, based off of PWD
-extTarg1.DATA = "Resources/MyExtraData.zip"
-#And append it to TARGET_PACKAGES.EXTRA_DATA
-TARGET_PACKAGES.EXTRA_DATA += extTarg1
-
+######For every extra package you would like to add
+######give it a PACKAGE_NAME
+#extTarg1.PACKAGE_NAME = "Data"
+######And a space seperated list of files, based off of PWD
+#extTarg1.DATA = "Resources/MyExtraData.zip"
+######And append it to TARGET_PACKAGES.EXTRA_DATA
+#TARGET_PACKAGES.EXTRA_DATA += extTarg1
 for(item,TARGET_PACKAGES.EXTRA_DATA){
     TARGET_PACKAGES.PACKAGES += $$eval($$item"."PACKAGE_NAME)
 }

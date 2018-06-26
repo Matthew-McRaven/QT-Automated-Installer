@@ -1,5 +1,14 @@
-#To change the output file name, or adjust what files are included in the ouput, see the "XML Tester Defs.pri" file
+#############################
+#Global Config Changes
+#############################
+#Prevent Windows from trying to parse the project three times per build.
+#This interferes with the deployment script, and makes debugging hard since Qt attempts to debug the optimized program.
+CONFIG -= debug_and_release \
+    debug_and_release_target
 
+#############################
+#Extra functions
+#############################
 #Clean path
 defineReplace(cpl){
     #Adjust the input path so that the correct slashes are used for the host shell $$psc OS
@@ -9,39 +18,155 @@ defineReplace(cpl){
 defineReplace(cpq){
     return(\"$$cpl($$1)\")
 }
-#Platform Specific Command Seperator
+#############################
+#Platform Specific Global Setup
+#############################
 win32{
-    psc="&"
-    TARGET_EXT=".exe"
+    psc = "&"
+    TARGET_EXT = ".exe"
+    NEEDS_QTIFW = true
 }
-macx{
-    psc=";"
-    TARGET_EXT=".app"
+else:macx{
+    psc = ";"
+    TARGET_EXT = ".app"
+    !isEmpty(MAC_USE_DMG_INSTALLER):NEEDS_QTIFW =f alse
+    else:NEEDS_QTIFW = true
+}
+else:linux{
+    psc= ""
+    TARGET_EXT = ""
+    NEEDS_QTIFW = true
 }
 
-
-#Prevent Windows from trying to parse the project three times per build.
-#This interferes with the deployment script, and makes debugging hard since Qt attempts to debug the optimized program.
-CONFIG -= debug_and_release \
-    debug_and_release_target
-QMAKE_MAC_SDK = macosx10.13
-
+#############################
+#Global Variables
+#############################
 QtDir = $$clean_path($$[QT_INSTALL_LIBS]/..)
 QtInstallerBin=$$clean_path($$QtDir/../../tools/Qtinstallerframework/3.0/bin)
-EXECUTE_QTIFW=""
-repoDir=""
+REPO_DIR=""
 PLATFORM_ICONS=""
 PLATFORM_DATA=""
 INSTALLER_CONFIG_FILE=""
-!CONFIG(debug,debug|release):macx:!isEmpty(MAC_USE_DMG_INSTALLER){
-    #For some reason, the release flag is set in both debug and release.
-    #So, the above Config(...) makes it so a disk image is only built in release mode.
+DEPLOY_QT_FILE = ""
 
-    #Create necessary directory structure for disk image.
-    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/)$$psc
-    #Copy over the executable and bundle it with its dependencies
-    QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$OUT_PWD/$$TARGET".app") $$cpq($$OUT_PWD/Installer/)$$psc
-    QMAKE_POST_LINK += $$cpq($$QtDir/bin/macdeployqt) $$cpq($$OUT_PWD/Installer/$$TARGET".app")$$psc
+#############################
+#Installer Code
+#############################
+
+#Check that all needed dependencies are installed. If not, prevent further code from dealing with lack of dependencies.
+equals(NEEDS_QTIFW,"true"):!exists($$QtInstallerBin/Repogen){
+    CONFIG -= program-installer program-package
+    warning("The current build configuration needs QT IFW 3.0 to be installed, but it is not present.\n Please install it via the QT maintenance tool.")
+}
+
+#If program is being built in installer mode, ensure that the packages are created if needed
+CONFIG(program-installer):{
+    CONFIG(macx:!isEmpty(MAC_USE_DMG_INSTALLER)){
+        #In the case of using a DMG installer on Mac, there is no reason to create package data
+    }
+    else:exists($$QtInstallerBin/Repogen){
+        CONFIG *= program-package #Add package flag in case it isn't already present
+    }
+}
+
+#Set flags for packaging utility
+CONFIG(program-package){
+    win32{
+        REPO_DIR = $$cpq($$OUT_PWD/Repository/win32)
+        INSTALLER_COMMANDS += "copy_packages"
+        INSTALLER_COMMANDS += "bundle_packages"
+        INSTALLER_COMMANDS += "package_program"
+        DEPLOY_QT_PROG = $$cpq($$QtDir/bin/windeployqt)
+        DEPLOY_TOOL_ARGS = "--no-translations --no-system-d3d-compiler"
+    }
+    else:macx{
+        REPO_DIR=$$cpq($$OUT_PWD/Repository/macx)
+        INSTALLER_COMMANDS += "copy_packages"
+        INSTALLER_COMMANDS += "bundle_packages"
+        INSTALLER_COMMANDS += "package_program"
+        DEPLOY_QT_PROG = $$cpq($$QtDir/bin/macdeployqt)
+        DEPLOY_TOOL_ARGS = ""
+    }
+    else:linux{
+        REPO_DIR=$$cpq($$OUT_PWD/Repository/linux)
+        INSTALLER_COMMANDS += "copy_packages"
+        INSTALLER_COMMANDS += "bundle_packages"
+        INSTALLER_COMMANDS += "package_program"
+    }
+}
+
+#Set flags for binary creator tool
+CONFIG(program-installer){
+    macx:!isEmpty(MAC_USE_DMG_INSTALLER){
+        INSTALLER_COMMANDS += "macx_dmg_installer"
+        DEPLOY_QT_PROG = $$cpq($$QtDir/bin/macdeployqt)
+        DEPLOY_TOOL_ARGS = ""
+    }
+    else:macx{
+        INSTALLER_COMMANDS += "qt_ifw_installer"
+
+        PLATFORM_DATA=MAC_DATA
+        PLATFORM_ICONS=MAC_ICONS
+        INSTALLER_CONFIG_FILE = $$cpq($$PWD/config/configmacx.xml)
+    }
+    else:win32{
+        INSTALLER_COMMANDS += "qt_ifw_installer"
+
+        PLATFORM_DATA = WINDOWS_DATA
+        PLATFORM_ICONS = WINDOWS_ICONS
+        INSTALLER_CONFIG_FILE = $$cpq($$PWD/config/configwin32.xml)
+    }
+    else:linux{
+        #Set up variables for Linux for the QTIFW installer
+    }
+}
+
+#Copy packages over to /Installer/Packages
+contains(INSTALLER_COMMANDS, "copy_packages"){
+    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/) $$psc
+    #Copy over packages meta info
+    for(PACKAGE,TARGET_PACKAGES.PACKAGES){
+        #For each target package, copy it over into the installer
+        QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
+        QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/data) $$psc
+    }
+
+    #Copy over target file
+    QMAKE_POST_LINK +=  $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/) $$psc
+
+    #Copy over extra packages data
+    for(extraTarget,TARGET_PACKAGES.EXTRA_DATA){
+        QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
+        for(datItem,$$eval(extraTarget).DATA){
+            message($$datItem)
+            QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$datItem) $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
+        }
+    }
+}
+
+#Bundle all dependencies needed to run the program using the platform dependant qt deploy tool
+contains(INSTALLER_COMMANDS,"bundle_packages"){
+    #Needs to be extended to work for all packages
+    #Execute windeployqt to copy needed binaries (dlls, etc).
+    #See documentation here:
+    #http://doc.qt.io/qt-5/windows-deployment.html
+    QMAKE_POST_LINK += $$DEPLOY_QT_PROG $$DEPLOY_TOOL_ARGS $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/$$TARGET$$TARGET_EXT) $$psc
+}
+
+#Repository creation code segement. This will always execute if building a QT IFW Installer.
+contains(INSTALLER_COMMANDS,"package_program"){
+    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$REPO_DIR) $$psc
+    QMAKE_POST_LINK += $$cpq($$QtInstallerBin/repogen) --update-new-components -p $$cpq($$OUT_PWD/Installer/packages) $$REPO_DIR $$psc
+}
+
+#Installer creation for Mac DMG
+contains(INSTALLER_COMMANDS,"macx_dmg_installer"){
+    #Create directory structure
+    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/) $$psc
+    #Copy over project output
+    QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/) $$psc
+    #Bundle output with its dependencies
+    QMAKE_POST_LINK += $$cpq($$QtDir/bin/macdeployqt) $$cpq($$OUT_PWD/Installer/$$TARGET$$TARGET_EXT)$$psc
     #Use HDIUtil to make a folder into a read/write image
     QMAKE_POST_LINK += hdiutil create -volname $$TARGET -srcfolder $$cpq($$OUT_PWD/Installer) -attach -ov -format UDRW $$TARGET"Temp.dmg"$$psc
     #Link from the read/write image to the machine's Applications folder
@@ -64,111 +189,32 @@ INSTALLER_CONFIG_FILE=""
     #Use the method described in "Adding Custom Targets" on http://doc.qt.io/qt-5/qmake-advanced-usage.html.
     #Our deployment tool will be called anytime the application is sucessfully linked in release mode.
 }
-else:!CONFIG(debug,debug|release):macx:isEmpty(MAC_USE_DMG_INSTALLER){
-    !exists($$QtInstallerBin/Repogen){ #No tool to create new binary, so quit
-        warning("Aborting installer creations, since QT Installer Framework 3.0 is not installed.")
-        warning("Please run the QT maintence tool and install QT Installer Framework 3.0.")
-    }
-    else{
-        repoDir=$$cpq($$OUT_PWD/Repository/macx)
-        EXECUTE_QTIFW="true"
-        PLATFORM_DATA=MAC_DATA
-        PLATFORM_ICONS=MAC_ICONS
-        INSTALLER_CONFIG_FILE=$$cpq($$PWD/config/configmacx.xml)
-        DEPLOY_ARGS = ""
-    }
-}
 
-#Otherwise if the target is windows, but no installer framework exists
-else:!CONFIG(debug,debug|release):win32:!exists($$QtInstallerBin/repogen.exe){
-    warning("Aborting installer creations, since QT Installer Framework 3.0 is not installed.")
-    warning("Please run the QT maintence tool and install QT Installer Framework 3.0.")
-}
-    #Otherwise build the installer for windows as normal.
-else:!CONFIG(debug,debug|release):win32{
-    #Directory where the repogen tool will put its output
-    repoDir=$$cpq($$OUT_PWD/Repository/win32)
-    EXECUTE_QTIFW="true"
-    PLATFORM_DATA = WINDOWS_DATA
-    PLATFORM_ICONS = WINDOWS_ICONS
-    INSTALLER_CONFIG_FILE = $$cpq($$PWD/config/configwin32.xml)
-    DEPLOY_ARGS = "--no-translations --no-system-d3d-compiler"
-}
-
-#Since there is no native QT deploy tool for Linux, one must be added in the project configuration
-#This condition is to make sure that a tool was provided as an argument to qmake
-else:linux:isEmpty(LINUX_DEPLOY){
-    warning("Attempting a Linux build, but no path to the build tool was provided")
-}
-
-#Then linuxdeployqt is available, and it should be used to make a working installer for linux.
-else:linux{
-    message("This is where the linux build code will go")
-}
-
-#Now that all confiugration flags have been set, execute
-!isEmpty(EXECUTE_QTIFW){
-    #Create installer directory structure
-    #These will be ignored if the target already exists
-    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer) $$psc \
-        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages) $$psc \
-        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$TARGET) $$psc \
-        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$TARGET/meta) $$psc \
-        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data) $$psc \
-        $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/config) $$psc
-
-    #Create a directory for update information
-    !exists($$repoDir){
-        QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$repoDir) $$psc
-    }
-
-    #Copy over files needed to create installer
-    QMAKE_POST_LINK += $${QMAKE_COPY} $$INSTALLER_CONFIG_FILE $$cpq($$OUT_PWD/Installer/config/config.xml) $$psc \ #Copy Platform dependant config file
+else:contains(INSTALLER_COMMANDS,"qt_ifw_installer"){
+    QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/config) $$psc #Create the directory to store the installer configuration info
+    QMAKE_POST_LINK += $${QMAKE_COPY} $$INSTALLER_CONFIG_FILE $$cpq($$OUT_PWD/Installer/config/config.xml) $$psc \ #Copy platform dependant config file
         $${QMAKE_COPY} $$cpq($$PWD/config/control.js) $$cpq($$OUT_PWD/Installer/config) $$psc #Copy over installer control script
-    for(PACKAGE,TARGET_PACKAGES.PACKAGES){
-        #For each target package, copy it over into the installer
-        QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
-    }
 
 
     #Copy over needed icons as set in defs file
     for(name,UNIVERSAL_ICONS){
         QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$cpq($$OUT_PWD/Installer/config) $$psc
     }
-    for(name,WINDOWS_ICONS){
+    for(name,PLATFORM_ICONS){
         QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$cpq($$OUT_PWD/Installer/config) $$psc
     }
+
     #Copy over additional data specified in defs file
     for(name,UNIVERSAL_DATA){
         QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data) $$psc
     }
-    for(name,WINDOWS_DATA){
+    for(name,PLATFORM_DATA){
         QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data) $$psc
     }
-
-    #Copy over extra data packages
-    for(extraTarget,TARGET_PACKAGES.EXTRA_DATA){
-        QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
-        for(datItem,$$eval(extraTarget).DATA){
-            message($$datItem)
-            QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$datItem) $$cpq($$OUT_PWD/Installer/packages/$$eval($$extraTarget"."PACKAGE_NAME)/data) $$psc
-        }
-    }
-
-    #Copy over executable to data directory
-    QMAKE_POST_LINK +=  $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data) $$psc
-    #Execute windeployqt to copy needed binaries (dlls, etc).
-    #See documentation here:
-    #http://doc.qt.io/qt-5/windows-deployment.html
-    QMAKE_POST_LINK += $$cpq($$QtDir/bin/windeployqt) $$DEPLOY_ARGS $$cpq($$OUT_PWD/Installer/packages/$$TARGET/data/$$TARGET$$TARGET_EXT) $$psc
-
 
     #The following two lines invoke QT Installer Framework executables. See the following link
     #for documentation on what the different comman line flags do.
     #http://doc.qt.io/qtinstallerframework/ifw-tools.html
-
-    #Execute repository creator
-    QMAKE_POST_LINK += $$cpq($$QtInstallerBin/repogen) --update-new-components -p $$cpq($$OUT_PWD/Installer/packages) $$repoDir $$psc
 
     #Create installer using the qt binary creator
     QMAKE_POST_LINK += $$cpq($$QtInstallerBin/binarycreator) -c $$cpq($$OUT_PWD/Installer/config/config.xml) -p $$cpq($$OUT_PWD/Installer/packages) \
