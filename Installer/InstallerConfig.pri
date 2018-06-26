@@ -132,7 +132,8 @@ contains(INSTALLER_COMMANDS, "copy_packages"){
     for(PACKAGE,TARGET_PACKAGES.PACKAGES){
         #For each target package, copy it over into the installer
         QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
-        QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE/) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
+        win32:QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
+        else:QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$PWD/packages/$$PACKAGE/) $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/meta) $$psc
         QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/packages/$$PACKAGE/data) $$psc
     }
 
