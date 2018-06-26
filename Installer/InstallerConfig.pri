@@ -24,18 +24,18 @@ defineReplace(cpq){
 win32{
     psc = "&"
     TARGET_EXT = ".exe"
-    NEEDS_QTIFW = true
+    NEEDS_QTIFW = "true"
 }
 else:macx{
     psc = ";"
     TARGET_EXT = ".app"
-    !isEmpty(MAC_USE_DMG_INSTALLER):NEEDS_QTIFW =f alse
-    else:NEEDS_QTIFW = true
+    !isEmpty(MAC_USE_DMG_INSTALLER):NEEDS_QTIFW = "false"
+    else:NEEDS_QTIFW = "true"
 }
 else:linux{
     psc= ""
     TARGET_EXT = ""
-    NEEDS_QTIFW = true
+    NEEDS_QTIFW = "true"
 }
 
 #############################
@@ -78,6 +78,9 @@ CONFIG(program-package){
         INSTALLER_COMMANDS += "package_program"
         DEPLOY_QT_PROG = $$cpq($$QtDir/bin/windeployqt)
         DEPLOY_TOOL_ARGS = "--no-translations --no-system-d3d-compiler"
+    }
+    else:macx:!isEmpty(MAC_USE_DMG_INSTALLER){
+        CONFIG -= program-package #Using the repogen tool makes no sense if using a DMG based installer
     }
     else:macx{
         REPO_DIR=$$cpq($$OUT_PWD/Repository/macx)
@@ -161,30 +164,23 @@ contains(INSTALLER_COMMANDS,"package_program"){
 
 #Installer creation for Mac DMG
 contains(INSTALLER_COMMANDS,"macx_dmg_installer"){
+
     #Create directory structure
     QMAKE_POST_LINK += $${QMAKE_MKDIR} $$cpq($$OUT_PWD/Installer/) $$psc
     #Copy over project output
-    QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/) $$psc
+    QMAKE_POST_LINK += $${QMAKE_COPY_DIR} $$cpq($$OUT_PWD/$$TARGET$$TARGET_EXT) $$cpq($$OUT_PWD/Installer/) $$psc
     #Bundle output with its dependencies
     QMAKE_POST_LINK += $$cpq($$QtDir/bin/macdeployqt) $$cpq($$OUT_PWD/Installer/$$TARGET$$TARGET_EXT)$$psc
-    #Use HDIUtil to make a folder into a read/write image
-    QMAKE_POST_LINK += hdiutil create -volname $$TARGET -srcfolder $$cpq($$OUT_PWD/Installer) -attach -ov -format UDRW $$TARGET"Temp.dmg"$$psc
-    #Link from the read/write image to the machine's Applications folder
-    QMAKE_POST_LINK += ln -s /Applications /Volumes/$$TARGET/Applications$$psc
-    #Write all data files to image
+    #Add a link to the application Directory
+    QMAKE_POST_LINK += ln -s /Applications $$OUT_PWD/Installer/Applications$$psc
     for(name,UNIVERSAL_DATA){
-        QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) /Volumes/$$TARGET $$psc
+        QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$OUT_PWD/Installer/ $$psc
     }
     for(name,MAC_DATA){
-        QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) /Volumes/$$TARGET $$psc
+        QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$PATH_PREFIX/$$name) $$OUT_PWD/Installer/ $$psc
     }
-    #Unmount the image, and create a new compressed, readonly image.
-    QMAKE_POST_LINK += hdiutil detach /Volumes/$$TARGET$$psc
-    QMAKE_POST_LINK += $${QMAKE_COPY} $$cpq($$OUT_PWD/$$TARGET"Temp".dmg) $$cpq($$OUT_PWD/$$TARGET"Temp2".dmg)$$psc
-    QMAKE_POST_LINK += hdiutil convert -format UDBZ -o $$cpq($$OUT_PWD/$$OUTPUT_INSTALLER_NAME".dmg") $$cpq($$OUT_PWD/$$TARGET"Temp2".dmg)$$psc
-    #Remove the temporary read/write image.
-    QMAKE_POST_LINK += $${QMAKE_DEL_FILE} $$cpq($$OUT_PWD/$$TARGET"Temp".dmg)$$psc
-    QMAKE_POST_LINK += $${QMAKE_DEL_FILE} $$cpq($$OUT_PWD/$$TARGET"Temp2".dmg)$$psc
+    #Use HDIUtil to make a folder into a read/write image
+    QMAKE_POST_LINK += hdiutil create -volname $$TARGET -srcfolder $$cpq($$OUT_PWD/Installer) -ov -format UDBZ $$OUT_PWD/$$OUTPUT_INSTALLER_NAME".dmg"$$psc
     #If QMAKE_POST_LINK stops working in a future version, QMAKE provides another way to add custom targets.
     #Use the method described in "Adding Custom Targets" on http://doc.qt.io/qt-5/qmake-advanced-usage.html.
     #Our deployment tool will be called anytime the application is sucessfully linked in release mode.
